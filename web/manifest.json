@@ -1,0 +1,19 @@
+{
+  "name": "Trama · Cultura que conecta",
+  "short_name": "Trama",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FAF7F0",
+  "theme_color": "#C15C3D",
+  "description": "Encuentra tu próximo encuentro cultural en Trujillo.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
