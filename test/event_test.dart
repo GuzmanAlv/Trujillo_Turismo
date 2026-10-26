@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trujillo_cultura/src/event.dart';
 import 'package:trujillo_cultura/src/state.dart';
+
 import 'memory_store.dart';
 
 void main() {
@@ -33,6 +34,22 @@ void main() {
       isTrue,
     );
   });
+  test('Guests cannot change personal data', () async {
+    final state = AppState(store: MemoryStore());
+    await state.initialize();
+    final interests = Set<String>.of(state.interests);
+    await state.toggleSaved('marinera');
+    await state.toggleLiked('jazz');
+    await state.toggleInterest('Teatro');
+    await state.setNearby(true);
+    await state.saveDraft({'title': 'Blocked'});
+    expect(await state.toggleReminder(state.events.first), isFalse);
+    expect(state.saved, isEmpty);
+    expect(state.liked, isEmpty);
+    expect(state.interests, interests);
+    expect(state.nearbyEnabled, isFalse);
+    expect(state.drafts, isEmpty);
+  });
   test('Distance filter excludes Huanchaco from downtown 5 km radius', () {
     final result = filterEvents(events, lat: -8.1116, lng: -79.0287, radius: 5);
     expect(result.any((e) => e.id == 'marinera'), isTrue);
@@ -45,10 +62,10 @@ void main() {
       final store = MemoryStore();
       final a = AppState(store: store);
       await a.initialize();
+      await a.demoLogin('Ana');
       await a.toggleSaved('marinera');
       await a.toggleLiked('jazz');
       await a.toggleInterest('Teatro');
-      await a.demoLogin('Ana');
       await a.saveDraft({'title': 'Mi evento'});
       final b = AppState(store: store);
       await b.initialize();

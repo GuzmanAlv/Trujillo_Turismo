@@ -1,10 +1,14 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
 import 'storage.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+
 import 'event.dart';
 import 'services.dart';
 
@@ -23,6 +27,7 @@ class AppState extends ChangeNotifier {
   String? name, email, startupMessage;
   bool firebaseReady = false, nearbyEnabled = false;
   bool demoCatalog = true;
+  bool interestsChosen = false;
   double? latitude, longitude;
   bool get loggedIn => name != null;
   Future<void> initialize() async {
@@ -36,6 +41,7 @@ class AppState extends ChangeNotifier {
     interests = (await prefs.getStringList('interests') ?? ['Danza', 'Arte'])
         .toSet();
     name = await prefs.getString('demoName');
+    interestsChosen = await prefs.getBool('interestsChosen') ?? false;
     nearbyEnabled = await prefs.getBool('nearby') ?? false;
     final storedDrafts = await prefs.getString('drafts');
     if (storedDrafts != null) {
@@ -86,6 +92,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleSaved(String id) async {
+    if (!loggedIn) return;
     if (!saved.add(id)) {
       saved.remove(id);
       await reminders.cancel(id);
@@ -97,18 +104,21 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleLiked(String id) async {
+    if (!loggedIn) return;
     if (!liked.add(id)) liked.remove(id);
     await prefs.setStringList('liked', liked.toList());
     notifyListeners();
   }
 
   Future<void> toggleInterest(String category) async {
+    if (!loggedIn) return;
     if (!interests.add(category)) interests.remove(category);
     await prefs.setStringList('interests', interests.toList());
     notifyListeners();
   }
 
   Future<bool> toggleReminder(CulturalEvent event) async {
+    if (!loggedIn) return false;
     if (reminderIds.contains(event.id)) {
       await reminders.cancel(event.id);
       reminderIds.remove(event.id);
@@ -121,6 +131,13 @@ class AppState extends ChangeNotifier {
     await prefs.setStringList('reminders', reminderIds.toList());
     notifyListeners();
     return true;
+  }
+
+  Future<void> finishInterests() async {
+    if (!loggedIn) return;
+    await prefs.setBool('interestsChosen', true);
+    interestsChosen = true;
+    notifyListeners();
   }
 
   Future<void> demoLogin(String displayName) async {
@@ -186,7 +203,7 @@ class AppState extends ChangeNotifier {
     latitude = p.latitude;
     longitude = p.longitude;
     notifyListeners();
-    if (nearbyEnabled) {
+    if (loggedIn && nearbyEnabled) {
       await reminders.nearby(
         events
             .where(
@@ -200,12 +217,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setNearby(bool enabled) async {
+    if (!loggedIn) return;
     nearbyEnabled = enabled;
     await prefs.setBool('nearby', enabled);
     notifyListeners();
   }
 
   Future<void> saveDraft(Map<String, dynamic> draft) async {
+    if (!loggedIn) return;
     drafts.add({...draft, 'createdAt': DateTime.now().toIso8601String()});
     await prefs.setString('drafts', jsonEncode(drafts));
     notifyListeners();

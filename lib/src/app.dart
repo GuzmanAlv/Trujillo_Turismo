@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import 'design.dart';
 import 'event.dart';
 import 'state.dart';
 import 'map_view.dart';
 import 'profile.dart';
+import 'access.dart';
 
 void toast(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(
@@ -30,7 +32,10 @@ class TramaApp extends StatelessWidget {
     title: 'Trama · Cultura que conecta',
     debugShowCheckedModeBanner: false,
     theme: tramaTheme(),
-    home: HomeShell(state: state),
+    home: AccessGate(
+      state: state,
+      builder: () => HomeShell(state: state),
+    ),
   );
 }
 
@@ -55,7 +60,7 @@ class _HomeShellState extends State<HomeShell> {
             child: SafeArea(
               child: Column(
                 children: [
-                    if (state.demoCatalog)
+                  if (state.demoCatalog)
                     Container(
                       width: double.infinity,
                       color: const Color(0xFFF0EBDF),
@@ -666,7 +671,15 @@ class EventCard extends StatelessWidget {
                   children: [
                     IconButton(
                       tooltip: 'Me gusta',
-                      onPressed: () => state.toggleLiked(e.id),
+                      onPressed: () async {
+                        if (await requireAccess(
+                          context,
+                          state,
+                          'dar Me gusta',
+                        )) {
+                          await state.toggleLiked(e.id);
+                        }
+                      },
                       icon: Icon(
                         state.liked.contains(e.id)
                             ? Icons.favorite_rounded
@@ -696,7 +709,15 @@ class EventCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     TextButton.icon(
-                      onPressed: () => state.toggleSaved(e.id),
+                      onPressed: () async {
+                        if (await requireAccess(
+                          context,
+                          state,
+                          'guardar este evento en tu agenda',
+                        )) {
+                          await state.toggleSaved(e.id);
+                        }
+                      },
                       icon: Icon(
                         state.saved.contains(e.id)
                             ? Icons.bookmark_rounded
@@ -778,7 +799,15 @@ class EventDetail extends StatelessWidget {
                       Text(e.description),
                       const SizedBox(height: 24),
                       FilledButton.icon(
-                        onPressed: () => state.toggleSaved(e.id),
+                        onPressed: () async {
+                          if (await requireAccess(
+                            context,
+                            state,
+                            'guardar este evento en tu agenda',
+                          )) {
+                            await state.toggleSaved(e.id);
+                          }
+                        },
                         icon: Icon(
                           state.saved.contains(e.id)
                               ? Icons.bookmark_added
@@ -794,6 +823,12 @@ class EventDetail extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: () async {
                           try {
+                            if (!await requireAccess(
+                              context,
+                              state,
+                              'activar recordatorios',
+                            ))
+                              return;
                             final ok = await state.toggleReminder(e);
                             if (context.mounted) {
                               toast(
@@ -909,6 +944,12 @@ class _AgendaViewState extends State<AgendaView> {
   DateTime? selected;
   @override
   Widget build(BuildContext context) {
+    if (!widget.state.loggedIn) {
+      return AccessPrompt(
+        state: widget.state,
+        action: 'organizar tu calendario y guardar tus planes',
+      );
+    }
     final saved =
         widget.state.events
             .where((e) => widget.state.saved.contains(e.id))
@@ -1077,4 +1118,3 @@ class _AgendaViewState extends State<AgendaView> {
     );
   }
 }
-

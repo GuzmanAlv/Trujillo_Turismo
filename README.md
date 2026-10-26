@@ -17,6 +17,8 @@ La demo funciona sin Firebase ni clave Maps. Todos los eventos, organizadores, f
 
 ## Funcionalidades
 
+- Bienvenida al abrir sin sesión, con exploración como invitado y acceso al espacio personal. Con Firebase configurado se ofrecen inicio de sesión y registro; sin Firebase se identifica el acceso por nombre como demostración. Las sesiones existentes abren directamente el catálogo.
+- Los invitados pueden buscar eventos, consultar detalles y cómo llegar. Agenda, calendario personal, me gusta, recordatorios, intereses y borradores requieren acceso. Un guardado iniciado como invitado continúa después del acceso y de la selección inicial de intereses. Los datos personales siguen siendo locales al dispositivo, sin sincronización por cuenta.
 - Feed vertical con categorías, búsqueda sin distinción de tildes, fecha, eventos próximos y entrada libre; detalle, origen y copiar información para compartir.
 - Recomendaciones locales y explicables: 2 puntos por categoría de interés y 1 por categoría de un evento marcado como me gusta. Desempate cronológico.
 - Favoritos y calendario mensual con indicadores; navegación por meses y filtro por día.

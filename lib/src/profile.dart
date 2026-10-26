@@ -1,188 +1,205 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'app.dart';
 import 'design.dart';
 import 'event.dart';
 import 'state.dart';
+import 'access.dart';
 
 class ProfileView extends StatelessWidget {
   final AppState state;
   const ProfileView({super.key, required this.state});
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      const Eyebrow('Tu propia forma de vivir Trujillo'),
-      const SizedBox(height: 10),
-      Text(
-        'Este es tu espacio',
-        style: Theme.of(context).textTheme.headlineMedium,
-      ),
-      const SizedBox(height: 24),
-      Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: ink,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => !state.loggedIn
+      ? AccessPrompt(state: state, action: 'personalizar tu perfil e intereses')
+      : ListView(
+          padding: const EdgeInsets.all(24),
           children: [
-            const CircleAvatar(
-              radius: 27,
-              backgroundColor: gold,
-              child: Icon(Icons.person_outline, size: 30, color: ink),
+            const Eyebrow('Tu propia forma de vivir Trujillo'),
+            const SizedBox(height: 10),
+            Text(
+              'Este es tu espacio',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: ink,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CircleAvatar(
+                    radius: 27,
+                    backgroundColor: gold,
+                    child: Icon(Icons.person_outline, size: 30, color: ink),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.loggedIn
+                        ? 'Hola, ${state.name}'
+                        : 'La cultura también es tuya.',
+                    style: const TextStyle(
+                      fontFamily: 'Georgia',
+                      color: cream,
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    state.loggedIn
+                        ? '${state.saved.length} planes guardados · ${state.interests.length} intereses'
+                        : 'Descubre, guarda y haz espacio para lo que te mueve.',
+                    style: const TextStyle(
+                      color: Color(0xFFCDD8CB),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (!state.loggedIn)
+                    FilledButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => LoginView(state: state),
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: cream,
+                        foregroundColor: ink,
+                      ),
+                      child: const Text('Entrar a mi espacio'),
+                    )
+                  else
+                    TextButton(
+                      onPressed: state.signOut,
+                      style: TextButton.styleFrom(foregroundColor: cream),
+                      child: const Text('Cerrar sesión'),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'Lo que te mueve',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Elige tus intereses. Tu feed se adapta a ti.',
+              style: TextStyle(color: muted),
             ),
             const SizedBox(height: 16),
-            Text(
-              state.loggedIn
-                  ? 'Hola, ${state.name}'
-                  : 'La cultura también es tuya.',
-              style: const TextStyle(
-                fontFamily: 'Georgia',
-                color: cream,
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (int i = 0; i < categories.length; i++)
+                  FilterChip(
+                    label: Text(categories[i]),
+                    avatar: Icon(categoryIcons[i], size: 18),
+                    selected: state.interests.contains(categories[i]),
+                    onSelected: (_) => state.toggleInterest(categories[i]),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            const Divider(color: line),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Avisos de eventos cercanos',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'En Android, al consultar tu ubicación en la app. No rastrea en segundo plano.',
+                style: TextStyle(fontSize: 12, color: muted),
+              ),
+              value: state.nearbyEnabled,
+              onChanged: state.setNearby,
+            ),
+            const Divider(color: line),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2E5D9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Eyebrow('Para quienes crean cultura'),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Tu evento merece\nencontrar a su gente.',
+                    style: TextStyle(
+                      fontFamily: 'Georgia',
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: ink,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Prepara una propuesta para nuestra futura comunidad de organizadores.',
+                    style: TextStyle(fontSize: 13, color: muted),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => OrganizerView(state: state),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Crear borrador de evento'),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              state.loggedIn
-                  ? '${state.saved.length} planes guardados · ${state.interests.length} intereses'
-                  : 'Descubre, guarda y haz espacio para lo que te mueve.',
-              style: const TextStyle(color: Color(0xFFCDD8CB), fontSize: 13),
-            ),
-            const SizedBox(height: 18),
-            if (!state.loggedIn)
-              FilledButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => LoginView(state: state),
+            if (state.drafts.isNotEmpty) ...[
+              const SizedBox(height: 22),
+              Text(
+                'Mis borradores (${state.drafts.length})',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              for (final d in state.drafts)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.edit_note, color: terra),
+                  title: Text(d['title'] as String),
+                  subtitle: const Text(
+                    'Guardado en este dispositivo · no publicado',
                   ),
                 ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: cream,
-                  foregroundColor: ink,
-                ),
-                child: const Text('Entrar a mi espacio'),
-              )
-            else
-              TextButton(
-                onPressed: state.signOut,
-                style: TextButton.styleFrom(foregroundColor: cream),
-                child: const Text('Cerrar sesión'),
+            ],
+            const SizedBox(height: 26),
+            const WovenBand(),
+            const SizedBox(height: 16),
+            const Center(
+              child: Text(
+                'TRAMA  /  TRUJILLO, PERÚ',
+                style: TextStyle(color: muted, fontSize: 10, letterSpacing: 2),
               ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 28),
-      Text('Lo que te mueve', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 8),
-      const Text(
-        'Elige tus intereses. Tu feed se adapta a ti.',
-        style: TextStyle(color: muted),
-      ),
-      const SizedBox(height: 16),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (int i = 0; i < categories.length; i++)
-            FilterChip(
-              label: Text(categories[i]),
-              avatar: Icon(categoryIcons[i], size: 18),
-              selected: state.interests.contains(categories[i]),
-              onSelected: (_) => state.toggleInterest(categories[i]),
-            ),
-        ],
-      ),
-      const SizedBox(height: 28),
-      const Divider(color: line),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text(
-          'Avisos de eventos cercanos',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: const Text(
-          'En Android, al consultar tu ubicación en la app. No rastrea en segundo plano.',
-          style: TextStyle(fontSize: 12, color: muted),
-        ),
-        value: state.nearbyEnabled,
-        onChanged: state.setNearby,
-      ),
-      const Divider(color: line),
-      const SizedBox(height: 18),
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2E5D9),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Eyebrow('Para quienes crean cultura'),
-            const SizedBox(height: 10),
-            const Text(
-              'Tu evento merece\nencontrar a su gente.',
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: ink,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Prepara una propuesta para nuestra futura comunidad de organizadores.',
-              style: TextStyle(fontSize: 13, color: muted),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => OrganizerView(state: state),
-                ),
-              ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Crear borrador de evento'),
             ),
           ],
-        ),
-      ),
-      if (state.drafts.isNotEmpty) ...[
-        const SizedBox(height: 22),
-        Text(
-          'Mis borradores (${state.drafts.length})',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        for (final d in state.drafts)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.edit_note, color: terra),
-            title: Text(d['title'] as String),
-            subtitle: const Text('Guardado en este dispositivo · no publicado'),
-          ),
-      ],
-      const SizedBox(height: 26),
-      const WovenBand(),
-      const SizedBox(height: 16),
-      const Center(
-        child: Text(
-          'TRAMA  /  TRUJILLO, PERÚ',
-          style: TextStyle(color: muted, fontSize: 10, letterSpacing: 2),
-        ),
-      ),
-    ],
-  );
+        );
 }
 
 class LoginView extends StatefulWidget {
   final AppState state;
-  const LoginView({super.key, required this.state});
+  final bool initialRegister;
+  const LoginView({
+    super.key,
+    required this.state,
+    this.initialRegister = false,
+  });
   @override
   State<LoginView> createState() => _LoginViewState();
 }
@@ -194,6 +211,12 @@ class _LoginViewState extends State<LoginView> {
       password = TextEditingController();
   bool register = false, busy = false, obscure = true;
   String? error;
+  @override
+  void initState() {
+    super.initState();
+    register = widget.initialRegister;
+  }
+
   @override
   void dispose() {
     name.dispose();
@@ -219,7 +242,7 @@ class _LoginViewState extends State<LoginView> {
           displayName: name.text,
         );
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         setState(
