@@ -195,10 +195,12 @@ class ProfileView extends StatelessWidget {
 class LoginView extends StatefulWidget {
   final AppState state;
   final bool initialRegister;
+  final VoidCallback? onExplore;
   const LoginView({
     super.key,
     required this.state,
     this.initialRegister = false,
+    this.onExplore,
   });
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -208,9 +210,13 @@ class _LoginViewState extends State<LoginView> {
   final form = GlobalKey<FormState>();
   final name = TextEditingController(),
       email = TextEditingController(),
-      password = TextEditingController();
+      password = TextEditingController(),
+      confirmation = TextEditingController();
   bool register = false, busy = false, obscure = true;
   String? error;
+  static const accent = Color(0xFF8D1B1B);
+  static const background = Color(0xFFF5F0E9);
+
   @override
   void initState() {
     super.initState();
@@ -219,30 +225,39 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   void dispose() {
-    name.dispose();
-    email.dispose();
-    password.dispose();
+    for (final c in [name, email, password, confirmation]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> submit() async {
     if (!form.currentState!.validate()) return;
+    final navigator = Navigator.of(context);
+    final entry = widget.onExplore != null;
+    final state = widget.state;
     setState(() {
       busy = true;
       error = null;
     });
     try {
-      if (!widget.state.firebaseReady) {
-        await widget.state.demoLogin(name.text);
-      } else {
-        await widget.state.authenticate(
-          email.text,
-          password.text,
-          register: register,
-          displayName: name.text,
-        );
+      await state.authenticate(
+        email.text,
+        password.text,
+        register: register,
+        displayName: name.text,
+      );
+      if (entry) {
+        if (!state.interestsChosen && navigator.mounted) {
+          await navigator.push<void>(
+            MaterialPageRoute(builder: (_) => InterestsWelcome(state: state)),
+          );
+        }
+      } else if (mounted) {
+        navigator.pop(true);
       }
-      if (mounted) Navigator.pop(context, true);
+    } on StateError catch (e) {
+      if (mounted) setState(() => error = e.message.toString());
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         setState(
@@ -257,133 +272,301 @@ class _LoginViewState extends State<LoginView> {
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => error = 'No pudimos iniciar sesión. Inténtalo de nuevo.',
-        );
+        setState(() => error = 'No pudimos acceder. Inténtalo de nuevo.');
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
+  InputDecoration decoration(String label, IconData icon, {Widget? suffix}) =>
+      InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20, color: muted),
+        suffixIcon: suffix,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFFE0D4C8)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFFE0D4C8)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: accent, width: 1.5),
+        ),
+      );
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: ListView(
-          padding: const EdgeInsets.all(28),
-          children: [
-            const Icon(Icons.hub_outlined, size: 54, color: terra),
-            const SizedBox(height: 24),
-            const Eyebrow('Cultura que conecta'),
-            const SizedBox(height: 12),
-            Text(
-              register ? 'Sé parte\ndel encuentro.' : 'Qué bueno\nencontrarte.',
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.state.firebaseReady
-                  ? 'Entra y sigue descubriendo tu ciudad.'
-                  : 'Prueba tu perfil en este dispositivo. El acceso con correo se activará al conectar Firebase.',
-              style: const TextStyle(color: muted),
-            ),
-            const SizedBox(height: 28),
-            Form(
-              key: form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget build(BuildContext context) => Theme(
+    data: Theme.of(context).copyWith(
+      colorScheme: Theme.of(context).colorScheme.copyWith(primary: accent),
+    ),
+    child: Scaffold(
+      backgroundColor: background,
+      appBar: widget.onExplore == null
+          ? AppBar(backgroundColor: background)
+          : null,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AutofillGroup(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
                 children: [
-                  if (register || !widget.state.firebaseReady) ...[
-                    TextFormField(
-                      controller: name,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: '¿Cómo te llamas?',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Escribe tu nombre'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (widget.state.firebaseReady) ...[
-                    TextFormField(
-                      controller: email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo electrónico',
-                        prefixIcon: Icon(Icons.alternate_email),
-                      ),
-                      validator: (v) =>
-                          v != null &&
-                              RegExp(
-                                r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-                              ).hasMatch(v.trim())
-                          ? null
-                          : 'Escribe un correo válido',
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: password,
-                      obscureText: obscure,
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          tooltip: 'Mostrar u ocultar contraseña',
-                          onPressed: () => setState(() => obscure = !obscure),
-                          icon: Icon(
-                            obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
+                  Row(
+                    children: [
+                      const Icon(Icons.hub_outlined, color: accent, size: 28),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'trama',
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 27,
+                          fontWeight: FontWeight.bold,
+                          color: ink,
                         ),
                       ),
-                      validator: (v) => (v?.length ?? 0) < 6
-                          ? 'Usa al menos 6 caracteres'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(error!, style: const TextStyle(color: terra)),
-                    ),
-                  FilledButton(
-                    onPressed: busy ? null : submit,
-                    child: Text(
-                      busy
-                          ? 'Un momento…'
-                          : !widget.state.firebaseReady
-                          ? 'Entrar en modo demo'
-                          : register
-                          ? 'Crear cuenta'
-                          : 'Iniciar sesión',
+                      const Spacer(),
+                      const Text(
+                        'TRUJILLO, PERÚ',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          color: muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Semantics(
+                      label: 'Ilustración de la Plaza de Armas de Trujillo',
+                      image: true,
+                      child: Image.asset(
+                        'assets/images/trujillo-login.png',
+                        height: register ? 100 : 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        excludeFromSemantics: true,
+                      ),
                     ),
                   ),
-                  if (widget.state.firebaseReady)
+                  const SizedBox(height: 22),
+                  Text(
+                    register ? 'Crear una cuenta' : 'Iniciar sesión',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    register
+                        ? 'Haz espacio para lo que te mueve'
+                        : 'Bienvenido de vuelta',
+                    style: const TextStyle(color: muted, fontSize: 14),
+                  ),
+                  const SizedBox(height: 22),
+                  Form(
+                    key: form,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (register) ...[
+                          TextFormField(
+                            key: const Key('auth-name'),
+                            controller: name,
+                            enabled: !busy,
+                            textCapitalization: TextCapitalization.words,
+                            autofillHints: const [AutofillHints.name],
+                            textInputAction: TextInputAction.next,
+                            decoration: decoration(
+                              'Nombre completo',
+                              Icons.person_outline,
+                            ),
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Escribe tu nombre'
+                                : null,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        TextFormField(
+                          key: const Key('auth-email'),
+                          controller: email,
+                          enabled: !busy,
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
+                          decoration: decoration(
+                            'Correo electrónico',
+                            Icons.mail_outline,
+                          ),
+                          validator: (v) =>
+                              v != null &&
+                                  RegExp(
+                                    r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                                  ).hasMatch(v.trim())
+                              ? null
+                              : 'Escribe un correo válido',
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          key: const Key('auth-password'),
+                          controller: password,
+                          enabled: !busy,
+                          obscureText: obscure,
+                          enableSuggestions: false,
+                          autocorrect: false,
+                          autofillHints: [
+                            register
+                                ? AutofillHints.newPassword
+                                : AutofillHints.password,
+                          ],
+                          textInputAction: register
+                              ? TextInputAction.next
+                              : TextInputAction.done,
+                          onFieldSubmitted: (_) {
+                            if (!register && !busy) submit();
+                          },
+                          decoration: decoration(
+                            'Contraseña',
+                            Icons.lock_outline,
+                            suffix: IconButton(
+                              tooltip: obscure
+                                  ? 'Mostrar contraseña'
+                                  : 'Ocultar contraseña',
+                              onPressed: () =>
+                                  setState(() => obscure = !obscure),
+                              icon: Icon(
+                                obscure
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => (v?.length ?? 0) < 6
+                              ? 'Usa al menos 6 caracteres'
+                              : null,
+                        ),
+                        if (register) ...[
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            key: const Key('auth-confirmation'),
+                            controller: confirmation,
+                            enabled: !busy,
+                            obscureText: obscure,
+                            enableSuggestions: false,
+                            autocorrect: false,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              if (!busy) submit();
+                            },
+                            decoration: decoration(
+                              'Confirmar contraseña',
+                              Icons.lock_outline,
+                            ),
+                            validator: (v) => v != password.text
+                                ? 'Las contraseñas no coinciden'
+                                : null,
+                          ),
+                        ],
+                        if (error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: Text(
+                              error!,
+                              style: const TextStyle(color: accent),
+                            ),
+                          ),
+                        const SizedBox(height: 24),
+                        FilledButton(
+                          onPressed: busy ? null : submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: Text(
+                            busy
+                                ? 'Un momento…'
+                                : register
+                                ? 'Registrarme'
+                                : 'Ingresar',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        register
+                            ? '¿Ya tienes una cuenta?'
+                            : '¿No tienes cuenta?',
+                        style: const TextStyle(color: muted, fontSize: 13),
+                      ),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => setState(() {
+                                register = !register;
+                                error = null;
+                                password.clear();
+                                confirmation.clear();
+                                form.currentState?.reset();
+                              }),
+                        child: Text(
+                          register ? 'Inicia sesión aquí' : 'Regístrate aquí',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.onExplore != null)
                     TextButton(
-                      onPressed: busy
-                          ? null
-                          : () => setState(() {
-                              register = !register;
-                              error = null;
-                            }),
+                      onPressed: busy ? null : widget.onExplore,
+                      child: const Text(
+                        'Explorar como invitado →',
+                        style: TextStyle(color: muted),
+                      ),
+                    ),
+                  if (!widget.state.firebaseReady)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        register ? 'Ya tengo una cuenta' : 'Crear una cuenta',
+                        'Demo local · Usa datos de prueba. Tu cuenta se guarda solo en este dispositivo.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: muted, fontSize: 11),
                       ),
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-            const WovenBand(),
-          ],
+          ),
         ),
       ),
     ),

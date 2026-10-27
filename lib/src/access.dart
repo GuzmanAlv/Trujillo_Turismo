@@ -86,100 +86,10 @@ class _AccessGateState extends State<AccessGate> {
   @override
   Widget build(BuildContext context) => widget.state.loggedIn || exploring
       ? widget.builder()
-      : WelcomeView(
+      : LoginView(
           state: widget.state,
           onExplore: () => setState(() => exploring = true),
         );
-}
-
-class WelcomeView extends StatelessWidget {
-  final AppState state;
-  final VoidCallback onExplore;
-  const WelcomeView({super.key, required this.state, required this.onExplore});
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: ListView(
-            padding: const EdgeInsets.all(28),
-            children: [
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.hub_outlined, color: terra, size: 32),
-                  SizedBox(width: 10),
-                  Text(
-                    'trama',
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 32,
-                      color: ink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const ClipRRect(
-                borderRadius: BorderRadius.all(Radius.circular(24)),
-                child: EventArt(kind: 0, height: 128),
-              ),
-              const SizedBox(height: 24),
-              const Eyebrow('Cultura que conecta'),
-              const SizedBox(height: 12),
-              Text(
-                'Tu próximo encuentro\nempieza aquí.',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Descubre la cultura de Trujillo y reúne tus planes favoritos en un solo lugar.',
-                style: TextStyle(color: muted),
-              ),
-              const SizedBox(height: 24),
-              if (state.firebaseReady) ...[
-                FilledButton(
-                  onPressed: () => openAccess(context, state),
-                  child: const Text('Iniciar sesión'),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: () => openAccess(context, state, register: true),
-                  child: const Text('Crear una cuenta'),
-                ),
-              ] else ...[
-                FilledButton(
-                  onPressed: () => openAccess(context, state),
-                  child: const Text('Probar mi espacio en modo demo'),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Acceso de prueba con tu nombre. El registro y el inicio de sesión con correo estarán disponibles al conectar el servicio de cuentas.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: muted, fontSize: 12),
-                ),
-              ],
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: onExplore,
-                child: const Text('Explorar como invitado'),
-              ),
-              const Text(
-                'Explora libremente. Entra a tu espacio para guardar eventos, usar tu agenda y recibir recordatorios.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: muted, fontSize: 12),
-              ),
-              const SizedBox(height: 24),
-              const WovenBand(),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 class AccessPrompt extends StatelessWidget {

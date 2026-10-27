@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 const ink = Color(0xFF233E37);
@@ -126,16 +127,34 @@ class _BandPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Original vector illustrations: offline, scalable and independent of image services.
+/// Bundled event covers with an offline vector fallback for other catalogs.
 class EventArt extends StatelessWidget {
   final int kind;
   final double height;
-  const EventArt({super.key, required this.kind, this.height = 250});
+  final String? imageAsset, imageLabel;
+  const EventArt({
+    super.key,
+    required this.kind,
+    this.height = 250,
+    this.imageAsset,
+    this.imageLabel,
+  });
   @override
   Widget build(BuildContext context) => SizedBox(
     height: height,
     width: double.infinity,
-    child: CustomPaint(painter: CulturalArtPainter(kind)),
+    child: imageAsset == null
+        ? CustomPaint(painter: CulturalArtPainter(kind))
+        : Image.asset(
+            imageAsset!,
+            height: height,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            cacheWidth: 1000,
+            semanticLabel: imageLabel,
+            errorBuilder: (_, error, stackTrace) =>
+                CustomPaint(painter: CulturalArtPainter(kind)),
+          ),
   );
 }
 

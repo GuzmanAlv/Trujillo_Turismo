@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -41,6 +44,7 @@ class AppState extends ChangeNotifier {
     interests = (await prefs.getStringList('interests') ?? ['Danza', 'Arte'])
         .toSet();
     name = await prefs.getString('demoName');
+    email = await prefs.getString('demoEmail');
     interestsChosen = await prefs.getBool('interestsChosen') ?? false;
     nearbyEnabled = await prefs.getBool('nearby') ?? false;
     final storedDrafts = await prefs.getString('drafts');
@@ -153,9 +157,13 @@ class AppState extends ChangeNotifier {
     required String displayName,
   }) async {
     if (!firebaseReady) {
-      throw StateError(
-        'Firebase aún no está configurado. Usa el modo de demostración.',
+      await authenticateDemo(
+        emailInput,
+        password,
+        register: register,
+        displayName: displayName,
       );
+      return;
     }
     final credential = register
         ? await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -172,11 +180,111 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Demo credentials stay on this device; Firebase remains the production path.
+  Future<void> authenticateDemo(
+    String emailInput,
+    String password, {
+    required bool register,
+    required String displayName,
+  }) async {
+    final normalized = emailInput.trim().toLowerCase();
+    final encoded = await prefs.getString('demoAccounts');
+    final accounts = encoded == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(jsonDecode(encoded) as Map);
+    if (register) {
+      if (accounts.containsKey(normalized)) {
+        throw StateError('Este correo ya está registrado en este dispositivo.');
+      }
+      final salt = base64UrlEncode(
+        List<int>.generate(24, (_) => Random.secure().nextInt(256)),
+      );
+      accounts[normalized] = {
+        'name': displayName.trim(),
+        'salt': salt,
+        'hash': sha256.convert(utf8.encode('$salt:$password')).toString(),
+      };
+      await prefs.setString('demoAccounts', jsonEncode(accounts));
+    } else {
+      final account = accounts[normalized] as Map<String, dynamic>?;
+      if (account == null ||
+          account['hash'] !=
+              sha256
+                  .convert(utf8.encode('${account['salt']}:$password'))
+                  .toString()) {
+        throw StateError(
+          'Correo o contraseña incorrectos. Si aún no tienes una cuenta demo, regístrate aquí.',
+        );
+      }
+    }
+    final account = accounts[normalized] as Map<String, dynamic>;
+    // Keep each demo account's plans and preferences separate on the device.
+    await _savePersonalData();
+    email = normalized;
+    await _loadPersonalData();
+    name = account['name'] as String;
+    await prefs.setString('demoName', name!);
+    await prefs.setString('demoEmail', email!);
+    notifyListeners();
+  }
+
+  String get _personalKey => 'demoPersonal:${email ?? 'legacy'}';
+
+  Future<void> _savePersonalData() async {
+    await prefs.setString(
+      _personalKey,
+      jsonEncode({
+        'saved': saved.toList(),
+        'liked': liked.toList(),
+        'interests': interests.toList(),
+        'drafts': drafts,
+        'interestsChosen': interestsChosen,
+      }),
+    );
+  }
+
+  Future<void> _loadPersonalData() async {
+    final encoded = await prefs.getString(_personalKey);
+    final data = encoded == null
+        ? <String, dynamic>{}
+        : jsonDecode(encoded) as Map<String, dynamic>;
+    saved = Set<String>.from(data['saved'] as List? ?? []);
+    liked = Set<String>.from(data['liked'] as List? ?? []);
+    interests = Set<String>.from(
+      data['interests'] as List? ?? ['Danza', 'Arte'],
+    );
+    drafts = (data['drafts'] as List? ?? [])
+        .map((d) => Map<String, dynamic>.from(d as Map))
+        .toList();
+    interestsChosen = data['interestsChosen'] as bool? ?? false;
+    // Pending device notifications belong to the session that scheduled them.
+    reminderIds = {};
+    nearbyEnabled = false;
+    await prefs.setStringList('saved', saved.toList());
+    await prefs.setStringList('liked', liked.toList());
+    await prefs.setStringList('interests', interests.toList());
+    await prefs.setString('drafts', jsonEncode(drafts));
+    await prefs.setBool('interestsChosen', interestsChosen);
+    await prefs.setBool('nearby', false);
+    await prefs.setStringList('reminders', []);
+  }
+
   Future<void> signOut() async {
     if (firebaseReady) await FirebaseAuth.instance.signOut();
+    if (!firebaseReady) {
+      await _savePersonalData();
+      for (final id in reminderIds) {
+        await reminders.cancel(id);
+      }
+      reminderIds = {};
+      await prefs.setStringList('reminders', []);
+      nearbyEnabled = false;
+      await prefs.setBool('nearby', false);
+    }
     name = null;
     email = null;
     await prefs.remove('demoName');
+    await prefs.remove('demoEmail');
     notifyListeners();
   }
 

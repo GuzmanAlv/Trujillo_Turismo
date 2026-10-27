@@ -9,8 +9,8 @@ import 'map_view.dart';
 import 'profile.dart';
 import 'access.dart';
 
-void toast(BuildContext context, String text) =>
-    ScaffoldMessenger.of(context).showSnackBar(
+void toast(BuildContext context, String text) => ScaffoldMessenger.of(context)
+    .showSnackBar(
       SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
     );
 Future<void> openExternal(BuildContext context, Uri uri) async {
@@ -172,8 +172,8 @@ class _DiscoverViewState extends State<DiscoverView> {
       category: category,
       freeOnly: free,
       day: date,
-      interests: s.interests,
-      liked: s.liked,
+      interests: s.loggedIn ? s.interests : <String>{},
+      liked: s.loggedIn ? s.liked : <String>{},
     );
     return RefreshIndicator(
       onRefresh: () async {
@@ -523,7 +523,12 @@ class EventCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  EventArt(kind: e.art, height: 240),
+                  EventArt(
+                    kind: e.art,
+                    height: 240,
+                    imageAsset: e.imageAsset,
+                    imageLabel: e.title.replaceAll('\n', ' '),
+                  ),
                   Positioned(
                     top: 16,
                     left: 16,
@@ -681,10 +686,12 @@ class EventCard extends StatelessWidget {
                         }
                       },
                       icon: Icon(
-                        state.liked.contains(e.id)
+                        (state.loggedIn && state.liked.contains(e.id))
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
-                        color: state.liked.contains(e.id) ? terra : muted,
+                        color: (state.loggedIn && state.liked.contains(e.id))
+                            ? terra
+                            : muted,
                         size: 22,
                       ),
                     ),
@@ -719,13 +726,15 @@ class EventCard extends StatelessWidget {
                         }
                       },
                       icon: Icon(
-                        state.saved.contains(e.id)
+                        (state.loggedIn && state.saved.contains(e.id))
                             ? Icons.bookmark_rounded
                             : Icons.bookmark_border_rounded,
                         size: 19,
                       ),
                       label: Text(
-                        state.saved.contains(e.id) ? 'En tu agenda' : 'Guardar',
+                        (state.loggedIn && state.saved.contains(e.id))
+                            ? 'En tu agenda'
+                            : 'Guardar',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -767,7 +776,12 @@ class EventDetail extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 700),
             child: ListView(
               children: [
-                EventArt(kind: e.art, height: 280),
+                EventArt(
+                  kind: e.art,
+                  height: 280,
+                  imageAsset: e.imageAsset,
+                  imageLabel: e.title.replaceAll('\n', ' '),
+                ),
                 const WovenBand(),
                 Padding(
                   padding: const EdgeInsets.all(24),
@@ -809,12 +823,12 @@ class EventDetail extends StatelessWidget {
                           }
                         },
                         icon: Icon(
-                          state.saved.contains(e.id)
+                          (state.loggedIn && state.saved.contains(e.id))
                               ? Icons.bookmark_added
                               : Icons.bookmark_add_outlined,
                         ),
                         label: Text(
-                          state.saved.contains(e.id)
+                          (state.loggedIn && state.saved.contains(e.id))
                               ? 'Quitar de mi agenda'
                               : 'Agregar a mi agenda',
                         ),
@@ -827,14 +841,16 @@ class EventDetail extends StatelessWidget {
                               context,
                               state,
                               'activar recordatorios',
-                            ))
+                            )) {
                               return;
+                            }
                             final ok = await state.toggleReminder(e);
                             if (context.mounted) {
                               toast(
                                 context,
                                 ok
-                                    ? (state.reminderIds.contains(e.id)
+                                    ? ((state.loggedIn &&
+                                              state.reminderIds.contains(e.id))
                                           ? 'Recordatorio programado aproximadamente una hora antes.'
                                           : 'Recordatorio desactivado.')
                                     : 'Disponible en Android con notificaciones permitidas y al menos una hora de anticipación.',
@@ -850,12 +866,12 @@ class EventDetail extends StatelessWidget {
                           }
                         },
                         icon: Icon(
-                          state.reminderIds.contains(e.id)
+                          (state.loggedIn && state.reminderIds.contains(e.id))
                               ? Icons.notifications_active
                               : Icons.notifications_none,
                         ),
                         label: Text(
-                          state.reminderIds.contains(e.id)
+                          (state.loggedIn && state.reminderIds.contains(e.id))
                               ? 'Desactivar recordatorio'
                               : 'Recordarme una hora antes',
                         ),

@@ -17,16 +17,18 @@ La demo funciona sin Firebase ni clave Maps. Todos los eventos, organizadores, f
 
 ## Funcionalidades
 
-- Bienvenida al abrir sin sesión, con exploración como invitado y acceso al espacio personal. Con Firebase configurado se ofrecen inicio de sesión y registro; sin Firebase se identifica el acceso por nombre como demostración. Las sesiones existentes abren directamente el catálogo.
+- Catálogo demo de 18 eventos: tres por categoría, con descripciones propias y una portada generada distinta para cada evento. Las 18 imágenes están incluidas como recursos locales para funcionar sin conexión; no son fotografías de convocatorias reales.
+
+- Inicio con ilustración generada de Trujillo y formulario de correo y contraseña. Incluye ingreso, registro con nombre y confirmación de contraseña y exploración como invitado. No incluye Google ni recuperación de contraseña. Las sesiones existentes abren directamente el catálogo.
 - Los invitados pueden buscar eventos, consultar detalles y cómo llegar. Agenda, calendario personal, me gusta, recordatorios, intereses y borradores requieren acceso. Un guardado iniciado como invitado continúa después del acceso y de la selección inicial de intereses. Los datos personales siguen siendo locales al dispositivo, sin sincronización por cuenta.
 - Feed vertical con categorías, búsqueda sin distinción de tildes, fecha, eventos próximos y entrada libre; detalle, origen y copiar información para compartir.
 - Recomendaciones locales y explicables: 2 puntos por categoría de interés y 1 por categoría de un evento marcado como me gusta. Desempate cronológico.
 - Favoritos y calendario mensual con indicadores; navegación por meses y filtro por día.
-- Intereses, agenda, reacciones, nombre de demostración y borradores persistidos localmente. El almacenamiento pertenece al dispositivo, no a una cuenta; no se sincroniza entre dispositivos.
+- Intereses, agenda, reacciones y borradores persistidos localmente. Las cuentas demo separan sus planes y preferencias en el mismo dispositivo; no se sincronizan entre dispositivos. Cerrar sesión cancela sus recordatorios locales.
 - Recordatorios Android aproximadamente una hora antes. Se solicita permiso al activarlos; se usa programación inexacta compatible con ahorro de batería, sin exigir alarmas exactas. Quitar un evento de la agenda cancela su recordatorio. Reinicio contemplado en el manifiesto. Deben verificarse en un dispositivo real.
 - Ubicación bajo demanda, distancia geodésica y filtro de 5 km. Avisos de cercanía en Android al consultar ubicación con la opción activada; no geofencing ni rastreo en segundo plano.
 - Mapa ilustrativo interactivo en demo. SDK Google Maps Android integrado y activable; enlaces externos de cómo llegar disponibles sin clave propia.
-- Acceso demo por nombre. Código de registro y login Firebase con correo/contraseña preparado para activación.
+- Registro e ingreso demo con correo y contraseña de prueba, guardados solo en el teléfono. La contraseña no se almacena como texto: se guarda un hash SHA-256 con sal aleatoria para esta demostración local; no sustituye la autenticación de producción. Firebase Authentication con correo/contraseña sigue preparado para activación.
 - Propuestas de organizadores guardadas como borradores locales. No se publican ni se cobran promociones.
 
 ## Estructura
